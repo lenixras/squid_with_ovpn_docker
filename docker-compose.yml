@@ -1,0 +1,17 @@
+version: '3'
+services:
+  squid-openvpn:
+    build: .
+    container_name: squid-openvpn-proxy
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN        # Nécessaire pour OpenVPN
+    ports:
+      - "3128:3128"
+    volumes:
+      - ./logs:/var/log/squid
+      - ./openvpn:/etc/openvpn
+      - ./run.sh:/run.sh
+      - ./config/squid.conf:/etc/squid/squid.conf
+    restart: unless-stopped
