@@ -157,14 +157,6 @@ docker compose restart
 - **Aucun secret n'est commité** dans ce repo. Les fichiers sensibles
   (`client.ovpn`, `client.key`, `client.crt`, `ca.crt`, `proxy-auth.txt`) sont
   listés dans `.gitignore` et doivent être fournis localement au déploiement.
-- Si tu as **auparavant commités** ces fichiers, considère-les comme compromis :
-  1. Régénère les clés chez ton provider VPN.
-  2. Révoque / blacklist les anciennes clés côté provider.
-  3. Change les identifiants Squid si tu en avais dans `proxy-auth.txt`.
-  4. Pour purger l'historique Git : `git filter-repo --invert-paths
-     --path openvpn/client.key --path openvpn/client.crt --path openvpn/ca.crt
-     --path openvpn/client.ovpn --path openvpn/proxy-auth.txt` puis
-     `git push --force --all`.
 - `cap_add: NET_ADMIN` + `devices: /dev/net/tun` sont nécessaires au tunnel.
   Ce sont les seuls privilèges accordés.
 - L'ACL Squid n'autorise que 2 IP sources → réduit la surface d'exposition
