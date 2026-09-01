@@ -1,0 +1,25 @@
+# Secrets — credentials VPN provider
+openvpn/proxy-auth.txt
+openvpn/client.key
+openvpn/client.crt
+openvpn/ca.crt
+openvpn/client.ovpn
+
+# Logs Squid
+logs/
+
+# Standard
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Env
+.env
+.env.*
+!.env.example
