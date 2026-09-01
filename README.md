@@ -47,21 +47,22 @@ géo-restreint", pas un proxy d'usage général).
 ├── run.sh                 # init Squid, monte /dev/net/tun, lance openvpn, route, squid
 ├── config/
 │   └── squid.conf         # ACL, whitelist, auth basique
-├── openvpn/
-│   ├── ca.crt             # certificat CA du provider VPN
-│   ├── client.crt         # certificat client
-│   ├── client.key         # clé privée ⚠ sensible
-│   ├── client.ovpn        # configuration OpenVPN
-│   └── proxy-auth.txt     # identifiants Squid user:password ⚠ sensible
-└── logs/                  # logs Squid persistés (volume)
+├── openvpn/               # ⚠ fichiers sensibles — voir openvpn/README
+│   └── README             # instructions pour client.ovpn + proxy-auth.txt
+└── logs/                  # logs Squid persistés (volume, gitignored)
 ```
+
+Les fichiers OpenVPN réels (`client.ovpn`, `client.key`, `client.crt`, `ca.crt`,
+`proxy-auth.txt`) ne sont **pas** dans ce repo : ils sont listés dans
+`.gitignore` et doivent être fournis localement au déploiement. Voir
+[`openvpn/README`](openvpn/README).
 
 ## Démarrage
 
 ```bash
-# 1. Éditer openvpn/client.ovpn avec tes credentials provider VPN
-# 2. Éditer config/squid.conf si tes ACL IP changent
-# 3. Éditer openvpn/proxy-auth.txt (format: user:password, un par ligne)
+# 1. Créer openvpn/client.ovpn avec ta config provider VPN (voir openvpn/README)
+# 2. Créer openvpn/proxy-auth.txt (user ligne 1, password ligne 2)
+# 3. Éditer config/squid.conf si tes ACL IP changent
 
 docker compose up -d --build
 
@@ -153,14 +154,17 @@ docker compose restart
 
 ## Sécurité
 
-- Le repo contient **des clés privées** (`client.key`) et **des credentials**
-  (`proxy-auth.txt`). Repo privé obligatoire, **NE PAS rendre public**.
-- `.gitignore` recommandé (à créer si absent) :
-  ```
-  openvpn/proxy-auth.txt
-  openvpn/client.key
-  logs/
-  ```
+- **Aucun secret n'est commité** dans ce repo. Les fichiers sensibles
+  (`client.ovpn`, `client.key`, `client.crt`, `ca.crt`, `proxy-auth.txt`) sont
+  listés dans `.gitignore` et doivent être fournis localement au déploiement.
+- Si tu as **auparavant commités** ces fichiers, considère-les comme compromis :
+  1. Régénère les clés chez ton provider VPN.
+  2. Révoque / blacklist les anciennes clés côté provider.
+  3. Change les identifiants Squid si tu en avais dans `proxy-auth.txt`.
+  4. Pour purger l'historique Git : `git filter-repo --invert-paths
+     --path openvpn/client.key --path openvpn/client.crt --path openvpn/ca.crt
+     --path openvpn/client.ovpn --path openvpn/proxy-auth.txt` puis
+     `git push --force --all`.
 - `cap_add: NET_ADMIN` + `devices: /dev/net/tun` sont nécessaires au tunnel.
   Ce sont les seuls privilèges accordés.
 - L'ACL Squid n'autorise que 2 IP sources → réduit la surface d'exposition
@@ -181,4 +185,4 @@ docker compose restart
 
 ## Licence
 
-Usage personnel.
+MIT — voir le fichier [`LICENSE`](LICENSE).
