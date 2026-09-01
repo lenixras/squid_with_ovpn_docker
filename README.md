@@ -124,14 +124,62 @@ http_access deny all
 
 Pour autoriser d'autres domaines : ajouter à `acl allowlink`.
 
-### Route statique (run.sh)
+### `run.sh`
+
+Script d'init lancé par le `CMD` du `Dockerfile`. Il fait tout, dans l'ordre :
 
 ```bash
+#!/bin/bash
+set -e
+
+echo "Initialisation de Squid..."
+squid -z          # crée les dossiers de cache UFS (/var/cache/squid/00..FF)
+                   # idempotent : ne fait rien s'ils existent déjà
+
+echo "Démarrage d'OpenVPN..."
+mkdir -p /dev/net
+mknod /dev/net/tun c 10 200    # crée le device TUN s'il n'existe pas
+chmod 600 /dev/net/tun          # seul root peut l'utiliser
+
+cd /etc/openvpn/
+openvpn --config client.ovpn --daemon    # lance openvpn en background,
+                                          # logs → /var/log/openvpn-status.log
 ip route add 192.168.60.0/23 via 172.22.0.1 dev eth0
+                                          # route statique vers le LAN derrière
+                                          # le VPN (adapte à TON réseau)
+
+sleep 5        # laisse openvpn finir de monter le tunnel avant squid
+
+echo "Démarrage de Squid..."
+squid -N -d 1  # -N = foreground (requis par Docker, sinon le container exit)
+                # -d 1 = debug verbeux, à baisser (0) en prod
 ```
 
-Adapte le réseau `192.168.60.0/23` à TON LAN derrière le VPN, et la passerelle
-`172.22.0.1` à la gateway Docker de ton réseau bridge.
+**Pièges & points d'attention :**
+
+- `mknod /dev/net/tun` : sur l'hôte, `devices: /dev/net/tun:/dev/net/tun`
+  dans `docker-compose.yml` est censé suffire, mais ce `mknod` couvre le cas
+  où le mappage ne s'est pas fait (image de base Debian générique).
+- `ip route add` : pas de `--` pour éviter un échec silencieux, mais
+  l'ajout est **idempotent seulement via `ip route replace`** sinon deux
+  démarrages successifs du container → erreur. À patcher si tu rebuilds
+  souvent.
+- `sleep 5` : arbitraire. Si openvpn met >5s à monter (DNS lent, TLS
+  handshake), Squid démarre avec tun0 non prêt → erreurs dans
+  `/var/log/squid/cache.log`. Pour un démarrage robuste, remplacer par :
+  ```bash
+  until ip link show tun0 >/dev/null 2>&1; do sleep 1; done
+  ```
+- `squid -d 1` : niveau de debug 1 = bavard (logs plein). En prod baisser
+  à `-d 0` ou retirer l'option (default 0).
+- Le script **n'a pas de signal handler** : `docker compose restart` envoie
+  SIGTERM → openvpn et squid meurent sans cleanup, le tunnel peut rester
+  en état demi-mort côté provider. À améliorer avec un trap :
+  ```bash
+  trap 'kill $(cat /var/run/openvpn.pid 2>/dev/null) 2>/dev/null; squid -k shutdown' TERM INT
+  ```
+
+Pour autoriser d'autres domaines : ajouter à `acl allowlink`.
 
 ## Commandes utiles
 
