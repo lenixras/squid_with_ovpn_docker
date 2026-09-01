@@ -1,0 +1,11 @@
+# openvpn/
+
+This directory must hold:
+
+- `client.ovpn` — your OpenVPN provider configuration
+- `proxy-auth.txt` — your VPN provider credentials (user on line 1, password on line 2)
+
+These files are listed in `.gitignore` and MUST NOT be committed.
+
+Squid credentials (HTTP basic auth on the proxy) are managed separately via
+`htpasswd` and `squid.conf` — see the main README.
